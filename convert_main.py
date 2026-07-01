@@ -1,8 +1,6 @@
 import io
 import os
 import base64
-import tempfile
-import platform
 from pathlib import Path
 from dotenv import load_dotenv
 from markitdown import MarkItDown
@@ -40,13 +38,6 @@ except ImportError:
     LLM_AVAILABLE = False
     _ANTHROPIC_API_KEY = ""
 
-try:
-    import win32com.client as _win32com
-    COM_AVAILABLE = True
-except ImportError:
-    _win32com = None
-    COM_AVAILABLE = False
-
 # =====================================================
 # CONFIGURATION
 # =====================================================
@@ -67,10 +58,6 @@ SUPPORTED_EXTENSIONS = {
 # markitdown cannot meaningfully extract text from raster images;
 # skip tier-1 for these and go straight to OCR/LLM.
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"}
-
-# Legacy binary Office formats — python-docx/python-pptx can't read these;
-# must be pre-converted to PDF via Windows COM before the pipeline runs.
-LEGACY_EXTENSIONS = {".doc", ".ppt"}
 
 # =====================================================
 # HELPERS
@@ -162,72 +149,6 @@ def _llm_extract_pages(png_pages: list[bytes], client, source_name: str) -> str:
 
 
 # =====================================================
-# WINDOWS COM — LEGACY FORMAT PRE-CONVERSION
-# =====================================================
-
-def _com_to_pdf(file: Path) -> Path | None:
-    """
-    Use Microsoft Office COM automation to export a legacy .doc or .ppt to a
-    temporary PDF.  Returns the Path to the temp PDF, or None on failure.
-    Requires pywin32 and Microsoft Word/PowerPoint to be installed.
-    """
-    if not COM_AVAILABLE:
-        return None
-
-    fd, tmp_str = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
-    tmp_pdf = Path(tmp_str)
-    abs_path = str(file.resolve())
-    ext = file.suffix.lower()
-
-    try:
-        if ext == ".doc":
-            word = _win32com.Dispatch("Word.Application")
-            word.Visible = False
-            word.AutomationSecurity = 3  # msoAutomationSecurityForceDisable (no macros)
-            try:
-                doc = word.Documents.Open(
-                    abs_path,
-                    ConfirmConversions=False,
-                    ReadOnly=True,
-                    AddToRecentFiles=False,
-                )
-                doc.SaveAs(str(tmp_pdf), FileFormat=17)  # 17 = wdFormatPDF
-                doc.Close(False)
-            finally:
-                word.Quit()
-
-        elif ext == ".ppt":
-            ppt_app = _win32com.Dispatch("PowerPoint.Application")
-            try:
-                presentation = ppt_app.Presentations.Open(
-                    abs_path,
-                    ReadOnly=True,
-                    Untitled=True,
-                    WithWindow=False,
-                )
-                presentation.SaveAs(str(tmp_pdf), 32)  # 32 = ppSaveAsPDF
-                presentation.Close()
-            finally:
-                ppt_app.Quit()
-
-        else:
-            tmp_pdf.unlink(missing_ok=True)
-            return None
-
-        if tmp_pdf.exists() and tmp_pdf.stat().st_size > 0:
-            return tmp_pdf
-
-        tmp_pdf.unlink(missing_ok=True)
-        return None
-
-    except Exception as e:
-        print(f"    [COM] Export failed: {e}")
-        tmp_pdf.unlink(missing_ok=True)
-        return None
-
-
-# =====================================================
 # THREE-TIER CONVERSION PIPELINE
 # =====================================================
 
@@ -243,37 +164,6 @@ def convert_file(
     Raises RuntimeError if all tiers fail or are unavailable.
     """
     ext = file.suffix.lower()
-
-    # --------------------------------------------------
-    # Pre-step — legacy binary Office formats
-    # (.doc / .ppt cannot be read by python-docx / python-pptx)
-    # Export to a temp PDF via COM, then run the full pipeline on that PDF.
-    # --------------------------------------------------
-    if ext in LEGACY_EXTENSIONS:
-        if not COM_AVAILABLE:
-            if platform.system() == "Windows":
-                raise RuntimeError(
-                    f"{ext} is a legacy binary Office format. "
-                    "Install Microsoft Office and pywin32 to enable COM conversion."
-                )
-            else:
-                raise RuntimeError(
-                    f"{ext} files (.doc/.ppt) are not supported on Streamlit Cloud. "
-                    "Please convert them to .docx or .pptx before uploading."
-                )
-        print(f"    [COM] Exporting legacy {ext} to PDF via Microsoft Office...")
-        tmp_pdf = _com_to_pdf(file)
-        if tmp_pdf is None:
-            raise RuntimeError(
-                f"COM export to PDF failed for {file.name}. "
-                "Ensure Microsoft Word/PowerPoint is installed and the file is not corrupted."
-            )
-        try:
-            print(f"    [COM] PDF ready — running conversion pipeline...")
-            return convert_file(tmp_pdf, converter, llm_client)
-        finally:
-            tmp_pdf.unlink(missing_ok=True)
-
     skip_markitdown = ext in IMAGE_EXTENSIONS
 
     # --------------------------------------------------
@@ -371,13 +261,6 @@ def main():
     print(f"OCR fallback  : {ocr_status}")
     pdf_status = "ENABLED" if FITZ_AVAILABLE else "DISABLED (install pymupdf)"
     print(f"PDF rendering : {pdf_status}")
-    if COM_AVAILABLE:
-        com_status = "ENABLED"
-    elif platform.system() == "Windows":
-        com_status = "DISABLED (Install pywin32)"
-    else:
-        com_status = "DISABLED (Not supported on Linux / Streamlit Cloud)"
-    print(f"COM (.doc/.ppt): {com_status}")
     print(f"\nInput  : {INPUT_FOLDER}")
     print(f"Output : {OUTPUT_FOLDER}\n")
 
