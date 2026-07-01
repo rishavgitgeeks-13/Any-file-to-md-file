@@ -42,8 +42,8 @@ except ImportError:
 # CONFIGURATION
 # =====================================================
 
-INPUT_FOLDER = r"Z:\Workflow Automation and AI Chatbot\401k Educational Documents"
-OUTPUT_FOLDER = r"Z:\Md_data"
+INPUT_FOLDER = r"C:\Users\rishav.patel\Documents\ConversionTool\IT Policy"
+OUTPUT_FOLDER = r"C:\Users\rishav.patel\Documents\ConversionTool\md.files"
 
 LLM_MODEL = "claude-opus-4-6"
 MIN_TEXT_LENGTH = 100   # chars below this → treat extraction as failed
@@ -178,12 +178,8 @@ def convert_file(
             print(
                 f"    [TIER1] insufficient ({len(text.strip())} chars), escalating to OCR..."
             )
-            
         except Exception as e:
-                raise RuntimeError(
-                    f"MarkItDown failed for {file.name}\n\n"
-                    f"{type(e).__name__}: {e}"
-                )     
+            print(f"    [TIER1] markitdown failed ({e}), escalating to OCR...")
 
     # --------------------------------------------------
     # Gather images (shared by Tier 2 and Tier 3)
