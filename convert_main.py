@@ -2,6 +2,7 @@ import io
 import os
 import base64
 import tempfile
+import platform
 from pathlib import Path
 from dotenv import load_dotenv
 from markitdown import MarkItDown
@@ -250,9 +251,15 @@ def convert_file(
     # --------------------------------------------------
     if ext in LEGACY_EXTENSIONS:
         if not COM_AVAILABLE:
+            if platform.system() == "Windows":
             raise RuntimeError(
                 f"{ext} is a legacy binary Office format. "
-                "Install pywin32 (pip install pywin32) to enable COM conversion."
+                "Install Microsoft Office and pywin32 to enable COM conversion."
+            )
+        else:
+            raise RuntimeError(
+                f"{ext} files (.doc/.ppt) are not supported on Streamlit Cloud. "
+                "Please convert them to .docx or .pptx before uploading."
             )
         print(f"    [COM] Exporting legacy {ext} to PDF via Microsoft Office...")
         tmp_pdf = _com_to_pdf(file)
@@ -364,7 +371,12 @@ def main():
     print(f"OCR fallback  : {ocr_status}")
     pdf_status = "ENABLED" if FITZ_AVAILABLE else "DISABLED (install pymupdf)"
     print(f"PDF rendering : {pdf_status}")
-    com_status = "ENABLED" if COM_AVAILABLE else "DISABLED (install pywin32)"
+    if COM_AVAILABLE:
+        com_status = "ENABLED"
+    elif platform.system() == "Windows":
+        com_status = "DISABLED (Install pywin32)"
+    else:
+        com_status = "DISABLED (Not supported on Linux / Streamlit Cloud)"
     print(f"COM (.doc/.ppt): {com_status}")
     print(f"\nInput  : {INPUT_FOLDER}")
     print(f"Output : {OUTPUT_FOLDER}\n")
