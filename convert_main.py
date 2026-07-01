@@ -185,36 +185,45 @@ def convert_file(
     # Gather images (shared by Tier 2 and Tier 3)
     # --------------------------------------------------
     png_pages = _gather_images(file)
-    if not png_pages and (skip_markitdown or True):
-        # Non-image formats that markitdown also failed on have no image fallback
-        if not skip_markitdown:
+
+    # If we can't produce images, there's nothing left to try
+    if not png_pages:
+        if ext in IMAGE_EXTENSIONS:
             raise RuntimeError(
-                "markitdown failed and file type cannot be rendered to images for OCR/LLM"
+                "Could not load image file — is Pillow installed? (pip install pillow)"
             )
+        if ext == ".pdf" and not FITZ_AVAILABLE:
+            raise RuntimeError(
+                "PDF rendering requires pymupdf — run: pip install pymupdf"
+            )
+        if ext == ".pdf":
+            raise RuntimeError(
+                "PDF could not be rendered to images. "
+                "The file may be corrupted, password-protected, or empty."
+            )
+        # docx, pptx, etc. — markitdown is the only tier available
+        raise RuntimeError(
+            f"markitdown failed on {ext} and this format cannot be rendered to "
+            "images for OCR/LLM fallback. Check the file is not corrupted."
+        )
 
     # --------------------------------------------------
     # Tier 2 — OCR via pytesseract
     # --------------------------------------------------
-    if OCR_AVAILABLE and png_pages:
+    if OCR_AVAILABLE:
         text = _ocr_pages(png_pages)
         if not is_content_poor(text):
             return text, "ocr"
         print(
             f"    [TIER2] OCR insufficient ({len(text.strip())} chars), escalating to LLM..."
         )
-    elif not OCR_AVAILABLE:
+    else:
         print("    [TIER2] pytesseract unavailable, skipping OCR...")
-    elif not png_pages:
-        print("    [TIER2] no renderable pages, skipping OCR...")
 
     # --------------------------------------------------
     # Tier 3 — Anthropic Claude vision
     # --------------------------------------------------
     if LLM_AVAILABLE and llm_client is not None:
-        if not png_pages:
-            raise RuntimeError(
-                "LLM fallback requires page images, but none could be rendered"
-            )
         text = _llm_extract_pages(png_pages, llm_client, file.name)
         if not is_content_poor(text):
             return text, "llm"
@@ -222,7 +231,7 @@ def convert_file(
 
     if not LLM_AVAILABLE:
         raise RuntimeError(
-            "All tiers exhausted. Set ANTHROPIC_API_KEY to enable LLM fallback."
+            "OCR also failed. Set ANTHROPIC_API_KEY in .env to enable LLM fallback."
         )
     raise RuntimeError("All extraction tiers failed")
 
