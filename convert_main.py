@@ -252,15 +252,15 @@ def convert_file(
     if ext in LEGACY_EXTENSIONS:
         if not COM_AVAILABLE:
             if platform.system() == "Windows":
-            raise RuntimeError(
-                f"{ext} is a legacy binary Office format. "
-                "Install Microsoft Office and pywin32 to enable COM conversion."
-            )
-        else:
-            raise RuntimeError(
-                f"{ext} files (.doc/.ppt) are not supported on Streamlit Cloud. "
-                "Please convert them to .docx or .pptx before uploading."
-            )
+                raise RuntimeError(
+                    f"{ext} is a legacy binary Office format. "
+                    "Install Microsoft Office and pywin32 to enable COM conversion."
+                )
+            else:
+                raise RuntimeError(
+                    f"{ext} files (.doc/.ppt) are not supported on Streamlit Cloud. "
+                    "Please convert them to .docx or .pptx before uploading."
+                )
         print(f"    [COM] Exporting legacy {ext} to PDF via Microsoft Office...")
         tmp_pdf = _com_to_pdf(file)
         if tmp_pdf is None:
