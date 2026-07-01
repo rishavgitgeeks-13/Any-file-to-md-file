@@ -178,8 +178,11 @@ def convert_file(
             print(
                 f"    [TIER1] insufficient ({len(text.strip())} chars), escalating to OCR..."
             )
-        except Exception as e:
-            print(f"    [TIER1] markitdown failed ({e}), escalating to OCR...")
+            except Exception as e:
+                raise RuntimeError(
+                    f"MarkItDown failed for {file.name}\n\n"
+                    f"{type(e).__name__}: {e}"
+                )     
 
     # --------------------------------------------------
     # Gather images (shared by Tier 2 and Tier 3)
