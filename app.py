@@ -14,6 +14,7 @@ from convert_main import (
     LLM_MODEL,
     OCR_AVAILABLE,
     FITZ_AVAILABLE,
+    COM_AVAILABLE,
     SUPPORTED_EXTENSIONS,
 )
 
@@ -73,6 +74,12 @@ with st.sidebar:
         st.success(f"Ready — `{LLM_MODEL}`")
     else:
         st.warning("Unavailable\n\nSet the `ANTHROPIC_API_KEY` environment variable")
+
+    st.markdown("**Legacy formats (.doc / .ppt)**")
+    if COM_AVAILABLE:
+        st.success("Ready — Microsoft Office COM")
+    else:
+        st.warning("Unavailable\n\nRun `pip install pywin32`")
 
     st.divider()
     st.caption(
