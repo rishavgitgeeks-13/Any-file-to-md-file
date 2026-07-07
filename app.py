@@ -84,7 +84,7 @@ if uploaded:
 
             with st.spinner("Converting document..."):
                 markdown, method = convert_file(
-                    file=tmp_path,
+                    path=tmp_path,
                     llama_parser=llama_parser,
                 )
 
