@@ -72,7 +72,7 @@ def llamaparse_extract(path: Path, parser):
     docs = parser.load_data(str(path))
     return "\n\n".join(doc.text for doc in docs)
 
-def convert_file(path: Path, parser):
+def convert_file(path: Path, llama_parser=None):
     if path.suffix.lower() == ".pdf":
         try:
             md = llamaparse_extract(path, parser)
