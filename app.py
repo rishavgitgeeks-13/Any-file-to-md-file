@@ -14,7 +14,7 @@ from convert_main_1 import (
     LLM_MODEL,
     OCR_AVAILABLE,
     FITZ_AVAILABLE,
-    SUPPORTED_EXTENSIONS,
+    SUPPORTED_EXTENSIONS
 )
 
 try:
