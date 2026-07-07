@@ -8,7 +8,7 @@ load_dotenv()
 import streamlit as st
 from markitdown import MarkItDown
 
-from convert_main_1 import (
+from convert_main import (
     convert_file,
     LLM_AVAILABLE,
     LLM_MODEL,
